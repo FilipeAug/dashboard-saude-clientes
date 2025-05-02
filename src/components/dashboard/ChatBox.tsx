@@ -1,11 +1,11 @@
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "@/lib/types";
 import { sendChatMessage } from "@/services/n8nService";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 export default function ChatBox() {
@@ -59,50 +59,47 @@ export default function ChatBox() {
   };
 
   return (
-    <Card className="card-gradient overflow-hidden flex flex-col h-full">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          Chat de Dados
-        </CardTitle>
+    <Card className="overflow-hidden flex flex-col h-full">
+      <CardHeader className="p-3 bg-muted/10">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Chat de Dados</span>
+        </div>
       </CardHeader>
-      <CardContent className="flex-grow p-0">
-        <ScrollArea className="h-[400px] p-4">
-          <div className="space-y-4">
+      <CardContent className="flex-grow p-3 pt-2">
+        <ScrollArea className="h-[250px]">
+          <div className="space-y-3">
             {messages.map((msg, index) => (
               <div 
                 key={index} 
-                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div 
-                  className={`max-w-[75%] rounded-lg p-3 ${
+                  className={`max-w-[80%] rounded-lg px-3 py-2 text-xs ${
                     msg.role === 'user' 
-                      ? 'bg-primary/20 text-white' 
-                      : 'bg-secondary text-white'
+                      ? 'bg-primary/10 text-foreground' 
+                      : 'bg-muted/20 text-foreground'
                   }`}
                 >
-                  <p className="text-sm">{msg.content}</p>
+                  {msg.content}
                 </div>
-                <span className="text-xs text-muted-foreground mt-1">
-                  {msg.timestamp.toLocaleTimeString('pt-BR')}
-                </span>
               </div>
             ))}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
       </CardContent>
-      <CardFooter className="border-t border-secondary p-4">
+      <CardFooter className="border-t border-muted/20 p-3">
         <form onSubmit={handleSendMessage} className="flex w-full gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite uma pergunta sobre os dados..."
+            placeholder="Perguntar..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 h-8 text-xs"
           />
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Enviando..." : "Enviar"}
+          <Button type="submit" disabled={isLoading} size="sm" className="h-8 px-2">
+            <Send className="h-4 w-4" />
           </Button>
         </form>
       </CardFooter>

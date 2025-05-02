@@ -32,7 +32,8 @@ export async function fetchGoogleSheetsData(): Promise<Cliente[]> {
         ultimaAtualizacao: values[headers.indexOf('Última Atualização')] 
           ? new Date(values[headers.indexOf('Última Atualização')]) 
           : new Date(),
-        fee: parseFloat(values[headers.indexOf('Fee')]) || 0
+        fee: parseFloat(values[headers.indexOf('Fee')]) || 0,
+        lt: parseFloat(values[headers.indexOf('LT')]) || 0 // Adicionado LT
       };
     });
     
@@ -43,19 +44,33 @@ export async function fetchGoogleSheetsData(): Promise<Cliente[]> {
   }
 }
 
-export function processDashboardData(clientes: Cliente[]): DashboardData {
-  // Calculate total clients
-  const totalClientes = clientes.length;
+export function processDashboardData(clientes: Cliente[], selectedSquad: string = 'Todos'): DashboardData {
+  // Filtra clientes pelo squad selecionado, se for 'Todos' retorna todos
+  const filteredClientes = selectedSquad === 'Todos' 
+    ? clientes 
+    : clientes.filter(cliente => cliente.squad === selectedSquad);
   
-  // Calculate total fee
-  const totalFee = clientes.reduce((sum, cliente) => sum + cliente.fee, 0);
+  // Calculate total clients
+  const totalClientes = filteredClientes.length;
+  
+  // Calculate total fee (MRR)
+  const totalFee = filteredClientes.reduce((sum, cliente) => sum + cliente.fee, 0);
+  
+  // Calculate ticket médio (média da coluna Fee)
+  const ticketMedio = totalClientes > 0 ? totalFee / totalClientes : 0;
+  
+  // Calculate LT médio (média da coluna LT)
+  const ltMedio = totalClientes > 0 
+    ? filteredClientes.reduce((sum, cliente) => sum + cliente.lt, 0) / totalClientes 
+    : 0;
   
   // Group by squad
-  const squads = Array.from(new Set(clientes.map(cliente => cliente.squad)));
+  const squads = Array.from(new Set(filteredClientes.map(cliente => cliente.squad)));
   
   // Create squad summaries
   const clientesPorSquad: SquadSummary[] = squads.map(squad => {
-    const squadClientes = clientes.filter(cliente => cliente.squad === squad);
+    const squadClientes = filteredClientes.filter(cliente => cliente.squad === squad);
+    const squadLtTotal = squadClientes.reduce((sum, cliente) => sum + cliente.lt, 0);
     
     return {
       nome: squad,
@@ -63,12 +78,25 @@ export function processDashboardData(clientes: Cliente[]): DashboardData {
       clientesAtivos: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'ativo').length,
       clientesInativos: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'inativo').length,
       clientesEmPausa: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'em pausa').length,
-      feeTotal: squadClientes.reduce((sum, cliente) => sum + cliente.fee, 0)
+      feeTotal: squadClientes.reduce((sum, cliente) => sum + cliente.fee, 0),
+      ltMedio: squadClientes.length > 0 ? squadLtTotal / squadClientes.length : 0
     };
   });
   
+  // Cliente por Status - para o gráfico de pizza
+  const statusCounts: Record<string, number> = {};
+  filteredClientes.forEach(cliente => {
+    const status = cliente.status || 'Desconhecido';
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
+  });
+  
+  const clientesPorStatus = Object.entries(statusCounts).map(([name, value]) => ({
+    name,
+    value
+  }));
+  
   // Find delayed clients
-  const clientesComAtraso = clientes.filter(cliente => {
+  const clientesComAtraso = filteredClientes.filter(cliente => {
     const today = new Date();
     const lastUpdate = new Date(cliente.ultimaAtualizacao);
     const diffTime = Math.abs(today.getTime() - lastUpdate.getTime());
@@ -80,7 +108,10 @@ export function processDashboardData(clientes: Cliente[]): DashboardData {
   return {
     totalClientes,
     totalFee,
+    ticketMedio,
+    ltMedio,
     clientesPorSquad,
-    clientesComAtraso
+    clientesComAtraso,
+    clientesPorStatus
   };
 }
