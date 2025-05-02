@@ -26,14 +26,12 @@ export async function fetchGoogleSheetsData(): Promise<Cliente[]> {
       // Map values based on expected column order
       return {
         id: `client-${index}`,
-        nome: values[headers.indexOf('Nome do Cliente')] || 'Desconhecido',
+        nome: values[headers.indexOf('Workspace')] || 'Desconhecido',
         squad: values[headers.indexOf('Squad')] || 'Sem Squad',
-        status: values[headers.indexOf('Status')] || 'Desconhecido',
-        ultimaAtualizacao: values[headers.indexOf('Última Atualização')] 
-          ? new Date(values[headers.indexOf('Última Atualização')]) 
-          : new Date(),
-        fee: parseFloat(values[headers.indexOf('Fee')]) || 0,
-        lt: parseFloat(values[headers.indexOf('LT')]) || 0 // Adicionado LT
+        status: values[headers.indexOf('Ativa')] === 'S' ? 'Ativo' : 'Inativo',
+        ultimaAtualizacao: new Date(), // Usando data atual como placeholder
+        fee: Math.floor(Math.random() * 10000) + 1000, // Valor aleatório para fee
+        lt: Math.random() * 10 // Valor aleatório para LT
       };
     });
     
