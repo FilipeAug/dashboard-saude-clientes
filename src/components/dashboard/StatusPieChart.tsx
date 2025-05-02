@@ -2,16 +2,24 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getStatusColor } from "@/lib/utils";
 
 interface StatusPieChartProps {
   data: { name: string; value: number }[];
   title: string;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
 export default function StatusPieChart({ data, title }: StatusPieChartProps) {
+  // Definimos cores específicas para cada status
+  const getStatusColor = (status: string) => {
+    if (status.includes('🟢') || status.includes('Safe')) return '#10b981'; // Verde
+    if (status.includes('🟡') || status.includes('Care')) return '#f59e0b'; // Amarelo
+    if (status.includes('🔴') || status.includes('Danger')) return '#ef4444'; // Vermelho
+    if (status.includes('Aviso Prévio') || status.includes('⏳')) return '#8b5cf6'; // Roxo
+    if (status.includes('Onboarding') || status.includes('🛫')) return '#3b82f6'; // Azul
+    if (status.includes('Implementação') || status.includes('⚙️')) return '#6366f1'; // Índigo
+    return '#94a3b8'; // Cinza para outros casos
+  };
+
   if (!data || data.length === 0) {
     return (
       <Card>
@@ -44,14 +52,9 @@ export default function StatusPieChart({ data, title }: StatusPieChartProps) {
                 dataKey="value"
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
-                {data.map((entry, index) => {
-                  // Use status color if available, otherwise use from array
-                  const color = entry.name.toLowerCase() === 'ativo' ? '#00C49F' : 
-                             entry.name.toLowerCase() === 'inativo' ? '#FF8042' :
-                             entry.name.toLowerCase() === 'em pausa' ? '#FFBB28' :
-                             COLORS[index % COLORS.length];
-                  return <Cell key={`cell-${index}`} fill={color} />;
-                })}
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
+                ))}
               </Pie>
               <Tooltip formatter={(value) => [`${value} clientes`, '']} />
               <Legend />

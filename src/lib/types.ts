@@ -2,31 +2,45 @@
 export interface Cliente {
   id: string;
   nome: string;
+  gestor: string;
+  gestorTrafego: string;
   squad: string;
-  status: string;
-  ultimaAtualizacao: Date;
+  inicioContrato?: Date;
+  ultimaAtualizacao?: Date;
+  momentoAtual: string;
+  prioridade?: string;
+  lt: number;
+  step?: string;
   fee: number;
-  lt: number; // Adicionado o campo LT
+  investimento?: number;
+  margemBruta?: string;
+  status: string;
+  resultado?: string;
+  entregas?: string;
+  relacionamento?: string;
+  problemaFinanceiro: boolean;
+  dataInicioAvisoPrevio?: Date;
+  planoRecuperacao?: string;
+  dataUltimoDiaServico?: Date;
+  observacoes?: string;
 }
 
 export interface SquadSummary {
   nome: string;
   totalClientes: number;
-  clientesAtivos: number;
-  clientesInativos: number;
-  clientesEmPausa: number;
+  clientesPorStatus: { [key: string]: number };
   feeTotal: number;
-  ltMedio: number; // Adicionado o campo LT médio
+  ltMedio: number;
 }
 
 export interface DashboardData {
   totalClientes: number;
   totalFee: number;
-  ltMedio: number; // Adicionado o campo LT médio
-  ticketMedio: number; // Adicionado o ticket médio
+  ltMedio: number;
+  ticketMedio: number;
   clientesPorSquad: SquadSummary[];
   clientesComAtraso: Cliente[];
-  clientesPorStatus: { name: string; value: number }[]; // Adicionado distribuição por status
+  clientesPorStatus: { name: string; value: number }[];
 }
 
 export interface ChatMessage {

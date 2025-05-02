@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Cliente, DashboardData } from "@/lib/types";
-import { fetchGoogleSheetsData, processDashboardData } from "@/services/googleSheetsService";
+import { fetchClientesData, processDashboardData } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import StatCard from "./StatCard";
 import { ChartBar, ChartLine, Filter, BarChart, ArrowUp, Users } from "lucide-react";
@@ -25,7 +25,7 @@ export default function Dashboard() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const clientsData = await fetchGoogleSheetsData();
+        const clientsData = fetchClientesData();
         setClients(clientsData);
         
         // Extrair opções de squad para o filtro
@@ -47,10 +47,6 @@ export default function Dashboard() {
     };
 
     loadData();
-    // Set up polling every 5 minutes
-    const intervalId = setInterval(loadData, 5 * 60 * 1000);
-    
-    return () => clearInterval(intervalId);
   }, [toast]);
 
   useEffect(() => {

@@ -67,7 +67,7 @@ export default function ChatBox() {
         </div>
       </CardHeader>
       <CardContent className="flex-grow p-2 pt-1">
-        <ScrollArea className="h-[180px]">
+        <ScrollArea className="h-[150px]">
           <div className="space-y-2">
             {messages.map((msg, index) => (
               <div 

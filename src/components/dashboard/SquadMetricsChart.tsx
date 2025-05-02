@@ -16,6 +16,7 @@ interface SquadMetricsChartProps {
   data: SquadSummary[];
 }
 
+// Cores para os diferentes squads
 const COLORS = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#d0ed57', '#ffc658'];
 
 export default function SquadMetricsChart({ data }: SquadMetricsChartProps) {
