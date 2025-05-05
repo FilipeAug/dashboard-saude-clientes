@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 import { Cliente, DashboardData } from "@/lib/types";
-import { fetchClientesData, processDashboardData } from "@/services/dataService";
+import { processJsonData, processDashboardData } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import StatCard from "./StatCard";
 import { ChartBar, ChartLine, Filter, BarChart, ArrowUp, Users } from "lucide-react";
@@ -11,141 +10,735 @@ import { formatCurrency } from "@/lib/utils";
 import ClientStatusTable from "./ClientStatusTable";
 import StatusPieChart from "./StatusPieChart";
 import SquadMetricsChart from "./SquadMetricsChart";
+import SquadFeesChart from "./SquadFeesChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [clients, setClients] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedSquad, setSelectedSquad] = useState<string>("Todos");
-  const [squadOptions, setSquadOptions] = useState<string[]>([]);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const clientsData = fetchClientesData();
-        setClients(clientsData);
-        
-        // Extrair opções de squad para o filtro
-        const uniqueSquads = Array.from(new Set(clientsData.map(client => client.squad)));
-        setSquadOptions(["Todos", ...uniqueSquads]);
-        
-        const dashboardData = processDashboardData(clientsData, selectedSquad);
-        setData(dashboardData);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        toast({
-          title: "Erro",
-          description: "Houve um erro ao carregar os dados do dashboard.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [toast]);
-
-  useEffect(() => {
-    // Atualizar os dados quando o filtro de squad mudar
-    if (clients.length > 0) {
-      const dashboardData = processDashboardData(clients, selectedSquad);
-      setData(dashboardData);
-    }
-  }, [selectedSquad, clients]);
-
-  const handleSquadChange = (value: string) => {
-    setSelectedSquad(value);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Carregando dados...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="text-center py-10">
-        <p>Nenhum dado disponível. Por favor, tente novamente mais tarde.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Dashboard V4 Company</h1>
-        <div className="flex items-center gap-3">
-          <Filter className="h-5 w-5 text-muted-foreground" />
-          <Select value={selectedSquad} onValueChange={handleSquadChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por Squad" />
-            </SelectTrigger>
-            <SelectContent>
-              {squadOptions.map((squad) => (
-                <SelectItem key={squad} value={squad}>
-                  {squad}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard 
-          title="Total de Clientes" 
-          value={data.totalClientes} 
-          icon={<Users className="h-4 w-4" />} 
-        />
-        <StatCard 
-          title="MRR (Fee Total)" 
-          value={formatCurrency(data.totalFee)} 
-          icon={<BarChart className="h-4 w-4" />} 
-        />
-        <StatCard 
-          title="Ticket Médio" 
-          value={formatCurrency(data.ticketMedio)} 
-          icon={<ChartLine className="h-4 w-4" />} 
-        />
-        <StatCard 
-          title="LT Médio" 
-          value={data.ltMedio.toFixed(1)} 
-          icon={<ArrowUp className="h-4 w-4" />} 
-        />
-      </div>
-      
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <StatusPieChart 
-          data={data.clientesPorStatus} 
-          title="Distribuição de Clientes por Status" 
-        />
-        <SquadMetricsChart data={data.clientesPorSquad} />
-      </div>
-      
-      {/* Content with Chat Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <ClientStatusTable clients={selectedSquad === 'Todos' ? clients : clients.filter(c => c.squad === selectedSquad)} />
-          {data.clientesComAtraso.length > 0 && (
-            <AlertsList delayedClients={data.clientesComAtraso} />
-          )}
-        </div>
-        <div className="lg:col-span-1">
-          <ChatBox />
-        </div>
-      </div>
-    </div>
-  );
-}
+// JSON data fornecido pelo usuário
+const jsonData = [
+    {
+        "Cliente": "Junior Pelissare",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "25/03/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Baixa",
+        "LT": "1,4",
+        "STEP": "",
+        "Fee": "R$ 4.200,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Ecoflex",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "06/09/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Média",
+        "LT": "8,0",
+        "STEP": "",
+        "Fee": "R$ 3.093,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Ruim",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Maahs",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "24/03/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Baixa",
+        "LT": "1,4",
+        "STEP": "",
+        "Fee": "R$ 5.000,00",
+        "Investimento": "R$ 2.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Yeda Supermercados",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Eduardo",
+        "Squad": "Spartans",
+        "Inicio do contrato": "10/03/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Média",
+        "LT": "1,9",
+        "STEP": "",
+        "Fee": "R$ 3.700,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Dr. Daniel Longhi",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Eduardo",
+        "Squad": "Spartans",
+        "Inicio do contrato": "31/01/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Média",
+        "LT": "3,1",
+        "STEP": "",
+        "Fee": "R$ 5.700,00",
+        "Investimento": "R$ 4.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🔴 Danger",
+        "Resultado": "Ruim",
+        "Entregas": "Ruim",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "- PERIODO CRITICO DO CONTRATO"
+    },
+    {
+        "Cliente": "La Mobel",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "27/08/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Baixa",
+        "LT": "8,4",
+        "STEP": "",
+        "Fee": "R$ 5.297,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Flore Extensions",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "29/07/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Alta",
+        "LT": "9,3",
+        "STEP": "",
+        "Fee": "R$ 7.000,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Atlântica",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "01/08/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "Baixa",
+        "LT": "9,2",
+        "STEP": "",
+        "Fee": "R$ 4.000,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🔴 Danger",
+        "Resultado": "Bom",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "INFOS DE AVISO PRÉVIO NÃO PREENCHIDAS"
+    },
+    {
+        "Cliente": "Ni Estofados",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Eduardo",
+        "Squad": "Spartans",
+        "Inicio do contrato": "01/10/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Média",
+        "LT": "7,2",
+        "STEP": "",
+        "Fee": "R$ 4.922,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "TRUE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Casttini",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "24/02/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Alta",
+        "LT": "2,3",
+        "STEP": "",
+        "Fee": "R$ 0,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Ruim",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Decor Maxi",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Eduardo",
+        "Squad": "Spartans",
+        "Inicio do contrato": "07/04/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Média",
+        "LT": "0,9",
+        "STEP": "",
+        "Fee": "R$ 4.200,00",
+        "Investimento": "R$ 4.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Ateliê Móveis Kids",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "11/04/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Alta",
+        "LT": "0,8",
+        "STEP": "",
+        "Fee": "R$ 4.000,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Vorlene & Chagas",
+        "Gestor projeto": "Alexandre",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "12/05/2025",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "Alta",
+        "LT": "-0,2",
+        "STEP": "",
+        "Fee": "R$ 3.100,00",
+        "Investimento": "",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "EM ONBOARDING"
+    },
+    {
+        "Cliente": "Ability",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "20/01/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "",
+        "LT": "3,5",
+        "STEP": "",
+        "Fee": "R$ 4.000,00",
+        "Investimento": "R$ 2.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "Aviso prévio",
+        "Resultado": "Ruim",
+        "Entregas": "Ruim",
+        "Relacionamento": "Ruim",
+        "Problema financeiro?": "TRUE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "INFOS DE AVISO PRÉVIO NÃO PREENCHIDAS"
+    },
+    {
+        "Cliente": "Hamonir",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "26/03/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "",
+        "LT": "1,3",
+        "STEP": "",
+        "Fee": "R$ 3.500,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "ONBOARDING ATRASADO"
+    },
+    {
+        "Cliente": "Moca Café",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "17/02/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "",
+        "LT": "2,6",
+        "STEP": "",
+        "Fee": "R$ 6.400,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "Aviso prévio",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "INFOS DE AVISO PRÉVIO NÃO PREENCHIDAS"
+    },
+    {
+        "Cliente": "Móveis Reinheimer",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "01/10/2024",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "",
+        "LT": "7,2",
+        "STEP": "",
+        "Fee": "R$ 3.000,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Pellens",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "26/02/2024",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "❌ Cancelado",
+        "Prioridade": "",
+        "LT": "14,5",
+        "STEP": "",
+        "Fee": "R$ 8.000,00",
+        "Investimento": "R$ 10.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "Aviso prévio",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "TRUE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Ortobom - Água Boa",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "16/01/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "",
+        "LT": "3,6",
+        "STEP": "",
+        "Fee": "R$ 3.500,00",
+        "Investimento": "R$ 2.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "Aviso prévio",
+        "Resultado": "Normal",
+        "Entregas": "Normal",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "INFOS DE AVISO PRÉVIO NÃO PREENCHIDAS"
+    },
+    {
+        "Cliente": "Makiê",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "01/09/2023",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "",
+        "LT": "20,4",
+        "STEP": "",
+        "Fee": "R$ 2.900,00",
+        "Investimento": "R$ 33.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Ruim",
+        "Entregas": "Normal",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "ModelismoBH",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "04/06/2023",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "",
+        "LT": "23,4",
+        "STEP": "",
+        "Fee": "R$ 6.500,00",
+        "Investimento": "R$ 30.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Dra Ana Maria",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "01/04/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "",
+        "LT": "1,1",
+        "STEP": "",
+        "Fee": "R$ 3.907,00",
+        "Investimento": "R$ 3.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "ONBOARDING ATRASADO"
+    },
+    {
+        "Cliente": "TN4-Tech",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "26/11/2024",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "",
+        "LT": "5,3",
+        "STEP": "",
+        "Fee": "R$ 4.900,00",
+        "Investimento": "R$ 10.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Normal",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "- PERIODO CRITICO DO CONTRATO"
+    },
+    {
+        "Cliente": "La Vie en Mode",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "01/03/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "",
+        "LT": "2,2",
+        "STEP": "",
+        "Fee": "R$ 5.000,00",
+        "Investimento": "R$ 5.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Bom",
+        "Entregas": "Ruim",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": ""
+    },
+    {
+        "Cliente": "Sleep Brand Colchões",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "01/03/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "Alta",
+        "LT": "2,2",
+        "STEP": "",
+        "Fee": "R$ 3.000,00",
+        "Investimento": "R$ 4.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Ruim",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "ONBOARDING ATRASADO"
+    },
+    {
+        "Cliente": "ChiqueB",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "08/04/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "",
+        "LT": "0,9",
+        "STEP": "",
+        "Fee": "R$ 4.500,00",
+        "Investimento": "R$ 4.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🔴 Danger",
+        "Resultado": "Ruim",
+        "Entregas": "Ruim",
+        "Relacionamento": "Normal",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "ONBOARDING ATRASADO"
+    },
+    {
+        "Cliente": "Contorno do Sorriso",
+        "Gestor projeto": "Gláucia",
+        "Gestor Tráfego": "Matheus Azael",
+        "Squad": "Templários",
+        "Inicio do contrato": "10/04/2025",
+        "Ultima atualização": "28/04/2025",
+        "Momento atual": "🛫 Onboarding",
+        "Prioridade": "",
+        "LT": "0,8",
+        "STEP": "",
+        "Fee": "R$ 6.601,00",
+        "Investimento": "R$ 8.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Bom",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "ONBOARDING ATRASADO"
+    },
+    {
+        "Cliente": "Beaumont Colchões",
+        "Gestor projeto": "Bruno",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "26/02/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "Alta",
+        "LT": "14,5",
+        "STEP": "",
+        "Fee": "R$ 3.814,00",
+        "Investimento": "R$ 10.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🔴 Danger",
+        "Resultado": "Bom",
+        "Entregas": "Normal",
+        "Relacionamento": "Ruim",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "TRATATIVA DE CANCELAMENTO "
+    },
+    {
+        "Cliente": "Dankana",
+        "Gestor projeto": "Bruno",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "17/10/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⏳ Aviso Prévio",
+        "Prioridade": "Alta",
+        "LT": "6,7",
+        "STEP": "",
+        "Fee": "R$ 3.632,00",
+        "Investimento": "R$ 6.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🔴 Danger",
+        "Resultado": "Bom",
+        "Entregas": "Ruim",
+        "Relacionamento": "Ruim",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "AGUARDANDO RESPOSTA DA PROPOSTA"
+    },
+    {
+        "Cliente": "Kubera ",
+        "Gestor projeto": "Bruno",
+        "Gestor Tráfego": "Eduardo",
+        "Squad": "Spartans",
+        "Inicio do contrato": "16/12/2024",
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Baixa",
+        "LT": "4,7",
+        "STEP": "",
+        "Fee": "R$ 0,00",
+        "Investimento": "R$ 10.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟡 Care",
+        "Resultado": "Ruim",
+        "Entregas": "Ruim",
+        "Relacionamento": "Ruim",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "AGUARDANDO RESPOTA SOBRE O CONTRATO"
+    },
+    {
+        "Cliente": "Meicos",
+        "Gestor projeto": "Bruno",
+        "Gestor Tráfego": "Amaral",
+        "Squad": "Spartans",
+        "Inicio do contrato": "31/07/2024",
+        "Ultima atualização": "

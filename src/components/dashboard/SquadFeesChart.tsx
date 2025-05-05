@@ -14,12 +14,14 @@ export default function SquadFeesChart({ data }: SquadFeesChartProps) {
     fee: squad.feeTotal,
   }));
 
+  // Definindo cores para cada equipe no gráfico
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#10b981', '#06b6d4', '#8b5cf6'];
 
   return (
     <Card className="card-gradient">
       <CardHeader className="pb-0">
         <CardTitle className="text-lg">Fee por Squad</CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">*Não é afetado pelo filtro de squad</p>
       </CardHeader>
       <CardContent className="pt-4">
         <div className="h-[300px]">

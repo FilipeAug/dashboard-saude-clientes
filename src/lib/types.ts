@@ -1,6 +1,6 @@
 
 export interface Cliente {
-  id: string;
+  id?: string;
   nome: string;
   gestor: string;
   gestorTrafego: string;

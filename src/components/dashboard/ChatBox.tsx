@@ -1,107 +1,96 @@
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import React, { useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { SendHorizontal } from "lucide-react";
 import { ChatMessage } from "@/lib/types";
-import { sendChatMessage } from "@/services/n8nService";
-import { MessageCircle, Send } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
 
 export default function ChatBox() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      role: 'system',
-      content: 'Olá! Como posso ajudar você com os dados hoje?',
-      timestamp: new Date()
-    }
+      role: "system",
+      content: "Bem-vindo ao Dashboard V4 Company! Como posso ajudar?",
+      timestamp: new Date(),
+    },
   ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [inputValue, setInputValue] = useState("");
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const handleSend = () => {
+    if (inputValue.trim()) {
+      const newUserMessage: ChatMessage = {
+        role: "user",
+        content: inputValue,
+        timestamp: new Date(),
+      };
+      
+      setMessages([...messages, newUserMessage]);
+      setInputValue("");
+      
+      // Simulate response after a short delay
+      setTimeout(() => {
+        const botResponse: ChatMessage = {
+          role: "system",
+          content: "Obrigado por sua mensagem. Um de nossos agentes entrará em contato em breve.",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, botResponse]);
+      }, 1000);
+    }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!input.trim()) return;
-    
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-    
-    try {
-      const response = await sendChatMessage(input);
-      setMessages(prev => [...prev, response]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prev => [...prev, {
-        role: 'system',
-        content: 'Erro ao processar sua mensagem. Por favor, tente novamente.',
-        timestamp: new Date()
-      }]);
-    } finally {
-      setIsLoading(false);
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSend();
     }
   };
 
   return (
-    <Card className="overflow-hidden flex flex-col">
-      <CardHeader className="p-2 bg-muted/10">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">Chat de Dados</span>
-        </div>
+    <Card className="card-gradient flex flex-col h-[400px]">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Chat de Suporte</CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow p-2 pt-1">
-        <ScrollArea className="h-[150px]">
-          <div className="space-y-2">
-            {messages.map((msg, index) => (
-              <div 
-                key={index} 
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      <CardContent className="overflow-y-auto flex-grow pb-2">
+        <div className="space-y-4">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`p-3 rounded-lg max-w-[85%] ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary"
+                }`}
               >
-                <div 
-                  className={`max-w-[80%] rounded-lg px-2 py-1 text-xs ${
-                    msg.role === 'user' 
-                      ? 'bg-primary/10 text-foreground' 
-                      : 'bg-muted/20 text-foreground'
-                  }`}
-                >
-                  {msg.content}
-                </div>
+                <p className="text-sm">{message.content}</p>
+                <p className="text-xs opacity-70 mt-1">
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+            </div>
+          ))}
+        </div>
       </CardContent>
-      <CardFooter className="border-t border-muted/20 p-2">
-        <form onSubmit={handleSendMessage} className="flex w-full gap-1">
+      <CardFooter className="pt-0">
+        <div className="flex w-full gap-2">
           <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Perguntar..."
-            disabled={isLoading}
-            className="flex-1 h-7 text-xs"
+            placeholder="Digite sua mensagem..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="flex-grow"
           />
-          <Button type="submit" disabled={isLoading} size="sm" className="h-7 px-2">
-            <Send className="h-3 w-3" />
+          <Button size="icon" onClick={handleSend}>
+            <SendHorizontal className="h-4 w-4" />
           </Button>
-        </form>
+        </div>
       </CardFooter>
     </Card>
   );
