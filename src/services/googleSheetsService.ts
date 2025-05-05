@@ -28,10 +28,22 @@ export async function fetchGoogleSheetsData(): Promise<Cliente[]> {
         id: `client-${index}`,
         nome: values[headers.indexOf('Workspace')] || 'Desconhecido',
         squad: values[headers.indexOf('Squad')] || 'Sem Squad',
+        gestor: 'Não informado',
+        gestorTrafego: 'Não informado',
         status: values[headers.indexOf('Ativa')] === 'S' ? 'Ativo' : 'Inativo',
+        momentoAtual: 'Não informado',
         ultimaAtualizacao: new Date(), // Usando data atual como placeholder
+        prioridade: 'Média',
+        lt: Math.random() * 10, // Valor aleatório para LT
+        step: '',
         fee: Math.floor(Math.random() * 10000) + 1000, // Valor aleatório para fee
-        lt: Math.random() * 10 // Valor aleatório para LT
+        investimento: 0,
+        margemBruta: '',
+        resultado: '',
+        entregas: '',
+        relacionamento: '',
+        problemaFinanceiro: false,
+        observacoes: ''
       };
     });
     
@@ -68,16 +80,45 @@ export function processDashboardData(clientes: Cliente[], selectedSquad: string 
   // Create squad summaries
   const clientesPorSquad: SquadSummary[] = squads.map(squad => {
     const squadClientes = filteredClientes.filter(cliente => cliente.squad === squad);
-    const squadLtTotal = squadClientes.reduce((sum, cliente) => sum + cliente.lt, 0);
+    const totalSquadClients = squadClientes.length;
+    
+    // Calcular status por squad
+    const statusCountMap: Record<string, number> = {};
+    squadClientes.forEach(client => {
+      let statusKey = client.status;
+      statusCountMap[statusKey] = (statusCountMap[statusKey] || 0) + 1;
+    });
+    
+    // Estatísticas específicas por tipo de status
+    const clientesAtivos = squadClientes.filter(cliente => 
+      cliente.status.toLowerCase() === 'ativo' || 
+      cliente.status.includes('🟢') ||
+      cliente.status.includes('Safe')
+    ).length;
+    
+    const clientesInativos = squadClientes.filter(cliente => 
+      cliente.status.toLowerCase() === 'inativo' || 
+      cliente.status.includes('🔴') ||
+      cliente.status.includes('Danger')
+    ).length;
+    
+    const clientesEmPausa = squadClientes.filter(cliente => 
+      cliente.status.toLowerCase() === 'em pausa' || 
+      cliente.status.includes('🟡') ||
+      cliente.status.includes('Care')
+    ).length;
     
     return {
       nome: squad,
-      totalClientes: squadClientes.length,
-      clientesAtivos: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'ativo').length,
-      clientesInativos: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'inativo').length,
-      clientesEmPausa: squadClientes.filter(cliente => cliente.status.toLowerCase() === 'em pausa').length,
+      totalClientes: totalSquadClients,
+      clientesPorStatus: statusCountMap,
+      clientesAtivos,
+      clientesInativos,
+      clientesEmPausa,
       feeTotal: squadClientes.reduce((sum, cliente) => sum + cliente.fee, 0),
-      ltMedio: squadClientes.length > 0 ? squadLtTotal / squadClientes.length : 0
+      ltMedio: squadClientes.length > 0 
+        ? squadClientes.reduce((sum, cliente) => sum + cliente.lt, 0) / squadClientes.length 
+        : 0
     };
   });
   
@@ -95,12 +136,10 @@ export function processDashboardData(clientes: Cliente[], selectedSquad: string 
   
   // Find delayed clients
   const clientesComAtraso = filteredClientes.filter(cliente => {
-    const today = new Date();
-    const lastUpdate = new Date(cliente.ultimaAtualizacao);
-    const diffTime = Math.abs(today.getTime() - lastUpdate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays > 7;
+    return cliente.observacoes && (
+      cliente.observacoes.includes("ATRASADO") || 
+      cliente.observacoes.includes("PERIODO CRITICO")
+    );
   });
   
   return {

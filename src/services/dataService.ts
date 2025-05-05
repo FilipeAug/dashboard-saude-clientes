@@ -2,13 +2,11 @@
 import { Cliente, DashboardData, SquadSummary } from "@/lib/types";
 
 // Função para processar os dados do dashboard
-export function processDashboardData(clients: Cliente[], squadFilter: string = "Todos"): DashboardData {
-  // Calcular o total de clientes (o filtro NÃO afeta o gráfico de "Fee por Squad")
-  const totalClientes = squadFilter === "Todos" 
-    ? clients.length 
-    : clients.filter(client => client.squad === squadFilter).length;
+export function processDashboardData(clients: Cliente[]): DashboardData {
+  // Calcular o total de clientes
+  const totalClientes = clients.length;
   
-  // Para o gráfico de "Fee por Squad", usamos SEMPRE todos os clientes (não filtrados)
+  // Para o gráfico de "Fee por Squad", usamos todos os clientes
   const allSquads = [...new Set(clients.map(client => client.squad))];
   const clientesPorSquad: SquadSummary[] = [];
   
@@ -23,7 +21,7 @@ export function processDashboardData(clients: Cliente[], squadFilter: string = "
       statusCountMap[statusKey] = (statusCountMap[statusKey] || 0) + 1;
     });
     
-    // Calcular fee total por squad (sempre usa todos os clientes do squad)
+    // Calcular fee total por squad
     const feeTotal = squadClients.reduce((sum, client) => sum + (client.fee || 0), 0);
     
     // Calcular LT médio por squad
@@ -32,35 +30,51 @@ export function processDashboardData(clients: Cliente[], squadFilter: string = "
       ? validLTClients.reduce((sum, client) => sum + client.lt, 0) / validLTClients.length 
       : 0;
     
+    // Estatísticas por status para compatibilidade com ClientsBySquadChart
+    const clientesAtivos = squadClients.filter(client => 
+      client.status.includes('Safe') || 
+      client.status.includes('🟢')
+    ).length;
+    
+    const clientesInativos = squadClients.filter(client => 
+      client.status.includes('Danger') || 
+      client.status.includes('🔴') || 
+      client.status.includes('Aviso') || 
+      client.status.includes('Cancelado')
+    ).length;
+    
+    const clientesEmPausa = squadClients.filter(client => 
+      client.status.includes('Care') || 
+      client.status.includes('🟡')
+    ).length;
+    
     clientesPorSquad.push({
       nome: squad,
       totalClientes: totalSquadClients,
       clientesPorStatus: statusCountMap,
       feeTotal,
-      ltMedio
+      ltMedio,
+      clientesAtivos,
+      clientesInativos,
+      clientesEmPausa
     });
   });
   
-  // Filtrar clientes para métricas gerais (exceto para o gráfico de Fee por Squad)
-  const filteredClients = squadFilter === "Todos" 
-    ? clients 
-    : clients.filter(client => client.squad === squadFilter);
-  
-  // Calcular fee total dos clientes filtrados
-  const totalFee = filteredClients.reduce((sum, client) => sum + (client.fee || 0), 0);
+  // Calcular fee total de todos os clientes
+  const totalFee = clients.reduce((sum, client) => sum + (client.fee || 0), 0);
   
   // Calcular LT médio
-  const validLTClients = filteredClients.filter(client => client.lt > 0);
+  const validLTClients = clients.filter(client => client.lt > 0);
   const ltMedio = validLTClients.length > 0 
     ? validLTClients.reduce((sum, client) => sum + client.lt, 0) / validLTClients.length 
     : 0;
   
   // Calcular ticket médio
-  const ticketMedio = filteredClients.length > 0 ? totalFee / filteredClients.length : 0;
+  const ticketMedio = clients.length > 0 ? totalFee / clients.length : 0;
   
-  // Clientes por status
+  // Clientes por status para o gráfico de pizza
   const statusCountMap: Record<string, number> = {};
-  filteredClients.forEach(client => {
+  clients.forEach(client => {
     let statusKey = client.status;
     if (statusKey.includes('🟢')) statusKey = '🟢 Safe';
     else if (statusKey.includes('🟡')) statusKey = '🟡 Care';
@@ -76,10 +90,9 @@ export function processDashboardData(clients: Cliente[], squadFilter: string = "
   const clientesPorStatus = Object.entries(statusCountMap).map(([name, value]) => ({ name, value }));
   
   // Clientes com atraso (usando observações como critério)
-  const clientesComAtraso = filteredClients.filter(client => {
+  const clientesComAtraso = clients.filter(client => {
     return client.observacoes && (
-      client.observacoes.includes("ONBOARDING ATRASADO") || 
-      client.observacoes.includes("IMPLEMENTAÇÃO ATRASADA") ||
+      client.observacoes.includes("ATRASADO") || 
       client.observacoes.includes("PERIODO CRITICO")
     );
   });
@@ -96,13 +109,13 @@ export function processDashboardData(clients: Cliente[], squadFilter: string = "
 }
 
 // Converter string de moeda BR para número
-function parseBrazilianCurrency(currencyString: string): number {
+export function parseBrazilianCurrency(currencyString: string): number {
   if (!currencyString) return 0;
   return Number(currencyString.replace('R$', '').replace('.', '').replace(',', '.').trim());
 }
 
 // Converter data no formato DD/MM/YYYY para objeto Date
-function parseDate(dateString: string): Date | undefined {
+export function parseDate(dateString: string): Date | undefined {
   if (!dateString) return undefined;
   
   const parts = dateString.split('/');
@@ -116,7 +129,7 @@ function parseDate(dateString: string): Date | undefined {
 }
 
 // Converter string de número BR para número
-function parseBrazilianNumber(numberString: string): number {
+export function parseBrazilianNumber(numberString: string): number {
   if (!numberString) return 0;
   return Number(numberString.replace(',', '.').trim());
 }
@@ -150,15 +163,4 @@ export function processJsonData(jsonData: any[]): Cliente[] {
       observacoes: item.OBS
     };
   });
-}
-
-// Dados estáticos dos clientes (movidos para outra função para organização)
-const clientesJsonData = [
-  // Removendo o conteúdo pré-definido já que usaremos o processJsonData
-];
-
-// Função para buscar os dados dos clientes
-export function fetchClientesData(): Cliente[] {
-  // Usando os dados estáticos
-  return [];
 }
