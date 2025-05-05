@@ -1,17 +1,13 @@
-
 import { useEffect, useState } from "react";
 import { Cliente, DashboardData } from "@/lib/types";
 import { processJsonData, processDashboardData } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import StatCard from "./StatCard";
 import { ChartBar, ChartLine, Filter, BarChart, ArrowUp, Users } from "lucide-react";
-import AlertsList from "./AlertsList";
 import ChatBox from "./ChatBox";
 import { formatCurrency } from "@/lib/utils";
-import ClientStatusTable from "./ClientStatusTable";
 import StatusPieChart from "./StatusPieChart";
 import SquadMetricsChart from "./SquadMetricsChart";
-import SquadFeesChart from "./SquadFeesChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // JSON data fornecido pelo usuário
@@ -829,12 +825,6 @@ const Dashboard = () => {
     return <div className="flex items-center justify-center h-screen">Erro ao carregar dados.</div>;
   }
 
-  const delayedClients = clients.filter(
-    client => client.observacoes && 
-    (client.observacoes.includes("ATRASADO") || 
-     client.observacoes.includes("PERIODO CRITICO"))
-  );
-
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col md:flex-row items-center justify-between mb-8">
@@ -886,20 +876,16 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
+          <StatusPieChart 
+            data={filteredDashboardData.clientesPorStatus} 
+            title="Status dos Clientes" 
+          />
+        </div>
+        <div>
           <SquadMetricsChart data={filteredDashboardData.clientesPorSquad.filter(
             squad => squadFilter === "all" || squad.nome === squadFilter
           )} />
         </div>
-        <StatusPieChart data={filteredDashboardData.clientesPorStatus} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <AlertsList delayedClients={delayedClients} />
-        <SquadFeesChart data={dashboardData.clientesPorSquad} /> {/* Sempre usar dados originais */}
-      </div>
-
-      <div className="mb-6">
-        <ClientStatusTable clients={filteredClients} />
       </div>
 
       <div className="mb-6">

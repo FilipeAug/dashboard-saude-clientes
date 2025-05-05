@@ -31,6 +31,10 @@ export interface SquadSummary {
   clientesPorStatus: { [key: string]: number };
   feeTotal: number;
   ltMedio: number;
+  // Adicionando propriedades para compatibilidade com ClientsBySquadChart
+  clientesAtivos?: number;
+  clientesInativos?: number;
+  clientesEmPausa?: number;
 }
 
 export interface DashboardData {
