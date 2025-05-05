@@ -741,4 +741,4 @@ const jsonData = [
         "Gestor Tráfego": "Amaral",
         "Squad": "Spartans",
         "Inicio do contrato": "31/07/2024",
-        "Ultima atualização": "
+        "Ultima atualização": "05/
