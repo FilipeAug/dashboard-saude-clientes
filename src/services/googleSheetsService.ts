@@ -1,5 +1,6 @@
 
 import { Cliente, DashboardData, SquadSummary } from "@/lib/types";
+import { parseBrazilianCurrency, parseBrazilianNumber, parseDate } from "@/services/dataService";
 
 // Google Sheets API
 const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/1Grn9FetjKwuZ4M3TBuNPNbGyBm0TTnrBZDe5YTZfiKU/gviz/tq?tqx=out:json';
@@ -26,24 +27,28 @@ export async function fetchGoogleSheetsData(): Promise<Cliente[]> {
       // Map values based on expected column order
       return {
         id: `client-${index}`,
-        nome: values[headers.indexOf('Workspace')] || 'Desconhecido',
+        nome: values[headers.indexOf('Cliente')] || 'Desconhecido',
         squad: values[headers.indexOf('Squad')] || 'Sem Squad',
-        gestor: 'Não informado',
-        gestorTrafego: 'Não informado',
-        status: values[headers.indexOf('Ativa')] === 'S' ? 'Ativo' : 'Inativo',
-        momentoAtual: 'Não informado',
-        ultimaAtualizacao: new Date(), // Usando data atual como placeholder
-        prioridade: 'Média',
-        lt: Math.random() * 10, // Valor aleatório para LT
-        step: '',
-        fee: Math.floor(Math.random() * 10000) + 1000, // Valor aleatório para fee
-        investimento: 0,
-        margemBruta: '',
-        resultado: '',
-        entregas: '',
-        relacionamento: '',
-        problemaFinanceiro: false,
-        observacoes: ''
+        gestor: values[headers.indexOf('Gestor projeto')] || 'Não informado',
+        gestorTrafego: values[headers.indexOf('Gestor Tráfego')] || 'Não informado',
+        status: values[headers.indexOf('Status Atual')] || 'Não informado',
+        momentoAtual: values[headers.indexOf('Momento atual')] || 'Não informado',
+        ultimaAtualizacao: parseDate(values[headers.indexOf('Ultima atualização')]) || new Date(), 
+        prioridade: values[headers.indexOf('Prioridade')] || 'Média',
+        lt: parseBrazilianNumber(values[headers.indexOf('LT')]) || 0,
+        step: values[headers.indexOf('STEP')] || '',
+        fee: parseBrazilianCurrency(values[headers.indexOf('Fee')]) || 0,
+        investimento: parseBrazilianCurrency(values[headers.indexOf('Investimento')]) || 0,
+        margemBruta: values[headers.indexOf('Margem Bruta')] || '',
+        inicioContrato: parseDate(values[headers.indexOf('Inicio do contrato')]),
+        resultado: values[headers.indexOf('Resultado')] || '',
+        entregas: values[headers.indexOf('Entregas')] || '',
+        relacionamento: values[headers.indexOf('Relacionamento')] || '',
+        problemaFinanceiro: values[headers.indexOf('Problema financeiro?')] === 'TRUE',
+        dataInicioAvisoPrevio: parseDate(values[headers.indexOf('Data inicio aviso prévio')]),
+        planoRecuperacao: values[headers.indexOf('Plano para recuperar?')] || '',
+        dataUltimoDiaServico: parseDate(values[headers.indexOf('Data ultimo dia de serviço')]),
+        observacoes: values[headers.indexOf('OBS')] || ''
       };
     });
     
@@ -70,8 +75,9 @@ export function processDashboardData(clientes: Cliente[], selectedSquad: string 
   const ticketMedio = totalClientes > 0 ? totalFee / totalClientes : 0;
   
   // Calculate LT médio (média da coluna LT)
-  const ltMedio = totalClientes > 0 
-    ? filteredClientes.reduce((sum, cliente) => sum + cliente.lt, 0) / totalClientes 
+  const validLTClients = filteredClientes.filter(cliente => cliente.lt > 0);
+  const ltMedio = validLTClients.length > 0 
+    ? validLTClients.reduce((sum, cliente) => sum + cliente.lt, 0) / validLTClients.length 
     : 0;
   
   // Group by squad
@@ -123,13 +129,22 @@ export function processDashboardData(clientes: Cliente[], selectedSquad: string 
   });
   
   // Cliente por Status - para o gráfico de pizza
-  const statusCounts: Record<string, number> = {};
+  const statusCountMap: Record<string, number> = {};
   filteredClientes.forEach(cliente => {
-    const status = cliente.status || 'Desconhecido';
-    statusCounts[status] = (statusCounts[status] || 0) + 1;
+    let statusKey = cliente.status || 'Desconhecido';
+    
+    if (statusKey.includes('🟢')) statusKey = '🟢 Safe';
+    else if (statusKey.includes('🟡')) statusKey = '🟡 Care';
+    else if (statusKey.includes('🔴')) statusKey = '🔴 Danger';
+    else if (statusKey.includes('Aviso prévio')) statusKey = '⏳ Aviso Prévio';
+    else if (statusKey === 'Implantação') statusKey = '⚙️ Implementação';
+    else if (cliente.momentoAtual.includes('🛫')) statusKey = '🛫 Onboarding';
+    else if (cliente.momentoAtual.includes('⚙️')) statusKey = '⚙️ Implementação';
+    
+    statusCountMap[statusKey] = (statusCountMap[statusKey] || 0) + 1;
   });
   
-  const clientesPorStatus = Object.entries(statusCounts).map(([name, value]) => ({
+  const clientesPorStatus = Object.entries(statusCountMap).map(([name, value]) => ({
     name,
     value
   }));

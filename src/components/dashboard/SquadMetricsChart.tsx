@@ -17,7 +17,15 @@ interface SquadMetricsChartProps {
 }
 
 // Cores para os diferentes squads
-const COLORS = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#d0ed57', '#ffc658'];
+const COLORS = [
+  '#8884d8', // Roxo
+  '#83a6ed', // Azul claro
+  '#8dd1e1', // Ciano
+  '#82ca9d', // Verde
+  '#a4de6c', // Verde lima
+  '#d0ed57', // Amarelo verde
+  '#ffc658'  // Laranja
+];
 
 export default function SquadMetricsChart({ data }: SquadMetricsChartProps) {
   const [metricType, setMetricType] = useState<'fee' | 'lt' | 'ticket'>('fee');
@@ -56,6 +64,9 @@ export default function SquadMetricsChart({ data }: SquadMetricsChartProps) {
           : 0
   }));
 
+  // Ordenar squads por valor (do maior para o menor)
+  const sortedChartData = [...chartData].sort((a, b) => b.value - a.value);
+
   return (
     <Card className="card-gradient overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -79,7 +90,7 @@ export default function SquadMetricsChart({ data }: SquadMetricsChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={chartData}
+                data={sortedChartData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -89,12 +100,12 @@ export default function SquadMetricsChart({ data }: SquadMetricsChartProps) {
                 label={({ name, percent }) => 
                   `${name}: ${
                     metricType === 'fee' || metricType === 'ticket'
-                      ? formatCurrency(chartData.find(item => item.name === name)?.value || 0)
-                      : (chartData.find(item => item.name === name)?.value || 0).toFixed(1)
+                      ? formatCurrency(sortedChartData.find(item => item.name === name)?.value || 0)
+                      : (sortedChartData.find(item => item.name === name)?.value || 0).toFixed(1)
                   }`
                 }
               >
-                {chartData.map((entry, index) => (
+                {sortedChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

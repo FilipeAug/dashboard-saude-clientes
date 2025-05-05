@@ -79,9 +79,10 @@ export function processDashboardData(clients: Cliente[]): DashboardData {
     if (statusKey.includes('🟢')) statusKey = '🟢 Safe';
     else if (statusKey.includes('🟡')) statusKey = '🟡 Care';
     else if (statusKey.includes('🔴')) statusKey = '🔴 Danger';
-    else if (statusKey.includes('Aviso')) statusKey = '⏳ Aviso Prévio';
+    else if (statusKey.includes('Aviso prévio')) statusKey = '⏳ Aviso Prévio';
     else if (client.momentoAtual.includes('🛫')) statusKey = '🛫 Onboarding';
     else if (client.momentoAtual.includes('⚙️')) statusKey = '⚙️ Implementação';
+    else if (statusKey === 'Implantação') statusKey = '⚙️ Implementação';
     else statusKey = 'Outros';
     
     statusCountMap[statusKey] = (statusCountMap[statusKey] || 0) + 1;
@@ -134,7 +135,70 @@ export function parseBrazilianNumber(numberString: string): number {
   return Number(numberString.replace(',', '.').trim());
 }
 
-// Função para converter os dados JSON recebidos em objetos Cliente
+// Função para processar dados CSV
+export function processCSVData(csvData: string): Cliente[] {
+  // Dividir o CSV em linhas
+  const lines = csvData.trim().split('\n');
+  
+  // Remover aspas e dividir por vírgulas
+  const headers = lines[0].split(',').map(header => header.replace(/"/g, ''));
+  
+  // Processar cada linha (exceto o cabeçalho)
+  return lines.slice(1).map((line, index) => {
+    // Dividir a linha em campos considerando campos com aspas
+    const fields = [];
+    let currentField = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        fields.push(currentField);
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    fields.push(currentField); // Adiciona o último campo
+    
+    // Remover aspas extras de cada campo
+    const cleanFields = fields.map(field => field.replace(/^"|"$/g, ''));
+    
+    // Mapear os campos para os índices corretos
+    const cliente: Cliente = {
+      id: (index + 1).toString(),
+      nome: cleanFields[headers.indexOf("Cliente")] || '',
+      gestor: cleanFields[headers.indexOf("Gestor projeto")] || '',
+      gestorTrafego: cleanFields[headers.indexOf("Gestor Tráfego")] || '',
+      squad: cleanFields[headers.indexOf("Squad")] || '',
+      inicioContrato: parseDate(cleanFields[headers.indexOf("Inicio do contrato")]),
+      ultimaAtualizacao: parseDate(cleanFields[headers.indexOf("Ultima atualização")]),
+      momentoAtual: cleanFields[headers.indexOf("Momento atual")] || '',
+      prioridade: cleanFields[headers.indexOf("Prioridade")] || '',
+      lt: parseBrazilianNumber(cleanFields[headers.indexOf("LT")]),
+      step: cleanFields[headers.indexOf("STEP")] || '',
+      fee: parseBrazilianCurrency(cleanFields[headers.indexOf("Fee")]),
+      investimento: parseBrazilianCurrency(cleanFields[headers.indexOf("Investimento")]),
+      margemBruta: cleanFields[headers.indexOf("Margem Bruta")] || '',
+      status: cleanFields[headers.indexOf("Status Atual")] || '',
+      resultado: cleanFields[headers.indexOf("Resultado")] || '',
+      entregas: cleanFields[headers.indexOf("Entregas")] || '',
+      relacionamento: cleanFields[headers.indexOf("Relacionamento")] || '',
+      problemaFinanceiro: cleanFields[headers.indexOf("Problema financeiro?")] === "TRUE",
+      dataInicioAvisoPrevio: parseDate(cleanFields[headers.indexOf("Data inicio aviso prévio")]),
+      planoRecuperacao: cleanFields[headers.indexOf("Plano para recuperar?")] || '',
+      dataUltimoDiaServico: parseDate(cleanFields[headers.indexOf("Data ultimo dia de serviço")]),
+      observacoes: cleanFields[headers.indexOf("OBS")] || ''
+    };
+    
+    return cliente;
+  });
+}
+
+// Função para processar os dados JSON recebidos em objetos Cliente
 export function processJsonData(jsonData: any[]): Cliente[] {
   return jsonData.map((item, index) => {
     return {

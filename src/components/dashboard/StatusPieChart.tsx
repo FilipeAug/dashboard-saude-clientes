@@ -17,8 +17,36 @@ export default function StatusPieChart({ data, title }: StatusPieChartProps) {
     if (status.includes('Aviso Prévio') || status.includes('⏳')) return '#8b5cf6'; // Roxo
     if (status.includes('Onboarding') || status.includes('🛫')) return '#3b82f6'; // Azul
     if (status.includes('Implementação') || status.includes('⚙️')) return '#6366f1'; // Índigo
+    if (status.includes('Cancelado') || status.includes('❌')) return '#dc2626'; // Vermelho escuro
     return '#94a3b8'; // Cinza para outros casos
   };
+
+  // Ordenar os dados para que os status mais importantes apareçam primeiro
+  const sortedData = [...data].sort((a, b) => {
+    // Definindo a ordem prioritária dos status
+    const priorityOrder: Record<string, number> = {
+      '🟢 Safe': 1,
+      '🟡 Care': 2,
+      '🔴 Danger': 3,
+      '⏳ Aviso Prévio': 4,
+      '🛫 Onboarding': 5,
+      '⚙️ Implementação': 6,
+      'Implantação': 7,
+      '❌ Cancelado': 8,
+      'Outros': 9
+    };
+    
+    // Pegar a prioridade de cada status, ou usar um valor alto para "outros"
+    const priorityA = Object.keys(priorityOrder).find(key => a.name.includes(key)) 
+      ? priorityOrder[Object.keys(priorityOrder).find(key => a.name.includes(key)) as string]
+      : 99;
+    
+    const priorityB = Object.keys(priorityOrder).find(key => b.name.includes(key))
+      ? priorityOrder[Object.keys(priorityOrder).find(key => b.name.includes(key)) as string]
+      : 99;
+    
+    return priorityA - priorityB;
+  });
 
   if (!data || data.length === 0) {
     return (
@@ -43,7 +71,7 @@ export default function StatusPieChart({ data, title }: StatusPieChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={sortedData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -52,7 +80,7 @@ export default function StatusPieChart({ data, title }: StatusPieChartProps) {
                 dataKey="value"
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
-                {data.map((entry, index) => (
+                {sortedData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
                 ))}
               </Pie>
