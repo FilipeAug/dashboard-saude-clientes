@@ -741,4 +741,22 @@ const jsonData = [
         "Gestor Tráfego": "Amaral",
         "Squad": "Spartans",
         "Inicio do contrato": "31/07/2024",
-        "Ultima atualização": "05/
+        "Ultima atualização": "05/05/2025",
+        "Momento atual": "⚠️ Ongoing",
+        "Prioridade": "Baixa",
+        "LT": "9,3",
+        "STEP": "",
+        "Fee": "R$ 2.127,50",
+        "Investimento": "R$ 4.000,00",
+        "Margem Bruta": "",
+        "Status Atual": "🟢 Safe",
+        "Resultado": "Bom",
+        "Entregas": "Normal",
+        "Relacionamento": "Bom",
+        "Problema financeiro?": "FALSE",
+        "Data inicio aviso prévio": "",
+        "Plano para recuperar?": "",
+        "Data ultimo dia de serviço": "",
+        "OBS": "LANDING PAGE E SOCIAL MIDIA"
+    }
+];
