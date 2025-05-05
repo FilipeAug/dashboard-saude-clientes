@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Cliente, DashboardData } from "@/lib/types";
 import { processJsonData, processDashboardData } from "@/services/dataService";
@@ -760,3 +761,152 @@ const jsonData = [
         "OBS": "LANDING PAGE E SOCIAL MIDIA"
     }
 ];
+
+const Dashboard = () => {
+  const { toast } = useToast();
+  const [clients, setClients] = useState<Cliente[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [squadFilter, setSquadFilter] = useState<string>("all");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [allSquads, setAllSquads] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Processar os dados do JSON para o formato esperado pelo dashboard
+    try {
+      const processedClients = processJsonData(jsonData);
+      setClients(processedClients);
+      
+      // Extrair nomes únicos de squads para o filtro
+      const squads = [...new Set(processedClients.map(client => client.squad))];
+      setAllSquads(squads);
+
+      // Processar dados para o dashboard
+      const dashboardData = processDashboardData(processedClients);
+      setDashboardData(dashboardData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Erro ao processar dados:", error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível processar os dados do dashboard.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // Filtrar clientes por squad
+  const filteredClients = squadFilter === "all" 
+    ? clients 
+    : clients.filter(client => client.squad === squadFilter);
+
+  // Recalcular dados com base no filtro (exceto para gráfico de Fee por Squad)
+  const filteredDashboardData = dashboardData && squadFilter !== "all"
+    ? {
+        ...dashboardData,
+        totalClientes: filteredClients.length,
+        totalFee: filteredClients.reduce((acc, client) => acc + client.fee, 0),
+        ltMedio: filteredClients.length > 0 
+          ? filteredClients.reduce((acc, client) => acc + client.lt, 0) / filteredClients.length
+          : 0,
+        ticketMedio: filteredClients.length > 0
+          ? filteredClients.reduce((acc, client) => acc + client.fee, 0) / filteredClients.length
+          : 0,
+        clientesPorStatus: dashboardData.clientesPorStatus.map(item => ({
+          ...item,
+          value: filteredClients.filter(client => client.status.includes(item.name.split(" ")[0])).length
+        })),
+        clientesComAtraso: dashboardData.clientesComAtraso.filter(client => client.squad === squadFilter),
+        // Não filtramos clientesPorSquad para manter o gráfico de fee por squad intacto
+      }
+    : dashboardData;
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Carregando dados...</div>;
+  }
+
+  if (!dashboardData) {
+    return <div className="flex items-center justify-center h-screen">Erro ao carregar dados.</div>;
+  }
+
+  const delayedClients = clients.filter(
+    client => client.observacoes && 
+    (client.observacoes.includes("ATRASADO") || 
+     client.observacoes.includes("PERIODO CRITICO"))
+  );
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold mb-4 md:mb-0">Dashboard de Clientes</h1>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4" />
+            <span>Filtrar por Squad:</span>
+          </div>
+          <Select
+            value={squadFilter}
+            onValueChange={setSquadFilter}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Selecione um Squad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {allSquads.map((squad) => (
+                <SelectItem key={squad} value={squad}>{squad}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          title="Total de Clientes"
+          value={filteredDashboardData.totalClientes}
+          icon={<Users className="h-6 w-6" />}
+        />
+        <StatCard
+          title="Fee Total"
+          value={formatCurrency(filteredDashboardData.totalFee)}
+          icon={<BarChart className="h-6 w-6" />}
+        />
+        <StatCard
+          title="LT Médio"
+          value={filteredDashboardData.ltMedio.toFixed(1) + " meses"}
+          icon={<ChartLine className="h-6 w-6" />}
+        />
+        <StatCard
+          title="Ticket Médio"
+          value={formatCurrency(filteredDashboardData.ticketMedio)}
+          icon={<ArrowUp className="h-6 w-6" />}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          <SquadMetricsChart data={filteredDashboardData.clientesPorSquad.filter(
+            squad => squadFilter === "all" || squad.nome === squadFilter
+          )} />
+        </div>
+        <StatusPieChart data={filteredDashboardData.clientesPorStatus} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <AlertsList delayedClients={delayedClients} />
+        <SquadFeesChart data={dashboardData.clientesPorSquad} /> {/* Sempre usar dados originais */}
+      </div>
+
+      <div className="mb-6">
+        <ClientStatusTable clients={filteredClients} />
+      </div>
+
+      <div className="mb-6">
+        <ChatBox />
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
