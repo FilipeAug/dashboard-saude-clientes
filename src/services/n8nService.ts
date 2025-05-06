@@ -1,7 +1,7 @@
 
 import { ChatMessage } from "@/lib/types";
 
-const N8N_WEBHOOK_URL = 'https://n8n-n8n.p6jvp3.easypanel.host/webhook/fale-com-dados';
+const N8N_WEBHOOK_URL = 'https://n8n-n8n.p6jvp3.easypanel.host/webhook/lovable';
 
 export async function sendChatMessage(message: string): Promise<ChatMessage> {
   try {

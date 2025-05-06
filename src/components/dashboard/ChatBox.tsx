@@ -35,7 +35,6 @@ export default function ChatBox() {
       } catch (error) {
         console.error("Error communicating with N8N:", error);
         toast({
-          title: "Erro",
           description: "Não foi possível obter resposta do assistente IA.",
           variant: "destructive",
         });
