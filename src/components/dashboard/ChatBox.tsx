@@ -1,9 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SendHorizontal } from "lucide-react";
+import { SendHorizontal, Loader } from "lucide-react";
 import { ChatMessage } from "@/lib/types";
 import { sendChatMessage } from "@/services/n8nService";
 import { toast } from "@/components/ui/sonner";
@@ -16,6 +16,14 @@ export default function ChatBox() {
   }]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (inputValue.trim() && !isLoading) {
@@ -34,10 +42,7 @@ export default function ChatBox() {
         setMessages(prev => [...prev, botResponse]);
       } catch (error) {
         console.error("Error communicating with N8N:", error);
-        toast({
-          description: "Não foi possível obter resposta do assistente IA.",
-          variant: "destructive",
-        });
+        toast.error("Não foi possível obter resposta do assistente IA.");
         
         // Add fallback message
         setMessages(prev => [...prev, {
@@ -77,6 +82,7 @@ export default function ChatBox() {
               </div>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </CardContent>
       <CardFooter className="pt-0">
@@ -90,7 +96,7 @@ export default function ChatBox() {
             disabled={isLoading} 
           />
           <Button size="icon" onClick={handleSend} disabled={isLoading}>
-            <SendHorizontal className="h-4 w-4" />
+            {isLoading ? <Loader className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
           </Button>
         </div>
       </CardFooter>
