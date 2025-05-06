@@ -3,14 +3,13 @@ import { ChatMessage } from "@/lib/types";
 
 const N8N_WEBHOOK_URL = 'https://n8n-n8n.p6jvp3.easypanel.host/webhook/lovable';
 
-// Function to generate a unique session ID or retrieve it from localStorage
+// Função para gerenciar o ID de sessão do chat
 function getSessionId(): string {
-  // Check if we already have a session ID in localStorage
   let sessionId = localStorage.getItem('chatSessionId');
   
-  // If not, create a new one and store it
   if (!sessionId) {
-    sessionId = `session_${new Date().getTime()}_${Math.random().toString(36).substring(2, 9)}`;
+    // Criar um ID de sessão único combinando timestamp e string aleatória
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     localStorage.setItem('chatSessionId', sessionId);
   }
   
@@ -19,42 +18,45 @@ function getSessionId(): string {
 
 export async function sendChatMessage(message: string): Promise<ChatMessage> {
   try {
-    console.log("Sending message to N8N:", message);
-    
-    // Get the session ID for this chat interaction
+    // Obter o ID de sessão para manter contexto entre mensagens
     const sessionId = getSessionId();
-    console.log("Using session ID:", sessionId);
+    
+    // Preparar dados no formato que o N8N espera
+    const payload = {
+      chatInput: message,
+      sessionId: sessionId,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log("Enviando para N8N:", payload);
     
     const response = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        chatInput: message, // Changed from 'message' to 'chatInput' as expected by N8N
-        sessionId: sessionId, // Added sessionId to maintain context
-        timestamp: new Date().toISOString() // Keep timestamp for logging purposes
-      }),
-      // Adding these options to prevent CORS and cache issues
+      body: JSON.stringify(payload),
       mode: 'cors',
       cache: 'no-cache',
+      credentials: 'same-origin',
     });
 
     if (!response.ok) {
-      console.error("N8N webhook returned error status:", response.status);
-      throw new Error(`Error: ${response.status}`);
+      console.error("Erro na resposta do N8N:", response.status);
+      throw new Error(`Erro no servidor: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("N8N response:", data);
+    console.log("Resposta do N8N:", data);
     
+    // Retornar a mensagem formatada para o chat
     return {
       role: 'system',
-      content: data.response || 'Resposta recebida.',
+      content: data.response || 'Não foi possível obter uma resposta válida.',
       timestamp: new Date(),
     };
   } catch (error) {
-    console.error('Error sending message to N8N:', error);
-    throw error; // Let the component handle the error
+    console.error('Erro ao enviar mensagem para N8N:', error);
+    throw error;
   }
 }
