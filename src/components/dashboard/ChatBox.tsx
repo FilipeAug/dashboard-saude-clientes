@@ -27,18 +27,20 @@ export default function ChatBox() {
 
   const handleSend = async () => {
     if (inputValue.trim() && !isLoading) {
+      const userMessage = inputValue.trim();
       const newUserMessage: ChatMessage = {
         role: "user",
-        content: inputValue,
+        content: userMessage,
         timestamp: new Date()
       };
+      
       setMessages(prev => [...prev, newUserMessage]);
       setInputValue("");
       setIsLoading(true);
 
       try {
         // Send message to N8N webhook and get response
-        const botResponse = await sendChatMessage(inputValue.trim());
+        const botResponse = await sendChatMessage(userMessage);
         setMessages(prev => [...prev, botResponse]);
       } catch (error) {
         console.error("Error communicating with N8N:", error);
